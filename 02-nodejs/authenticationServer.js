@@ -30,8 +30,110 @@
  */
 
 const express = require("express")
+const body_parser = require("body-parser")
 const PORT = 3000;
 const app = express();
 // write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
 
+app.use(body_parser.json())
+const users = []
+
+const validateUserName = (obj) => {
+  return !users.some((user) => {
+    return user.username === obj.username;
+  })
+}
+
+const validateUser = (obj) => {
+  return users.some((user) => {
+    return (user.username === obj.username && user.password === obj.password);
+  })
+}
+
+class User{
+  static userCount = 0
+
+  constructor(obj){
+
+    const isValidUserId = validateUserName(obj)
+
+    if(!isValidUserId) throw new Error("Failed to create user")
+
+    this.id = User.userCount++
+    this.username = obj.username
+    this.email = obj.email
+    this.password = obj.password
+    this.firstName = obj.firstName
+    this.lastName = obj.lastName
+  }
+}
+
+
+app.post("/signup", (req, res) => {
+  try{
+    const user = new User(req.body)
+    users.push(user);
+    res.status(201).send("Signup successful")
+  }
+  catch(e){
+    res.status(400).send("Failed to create user!!!")
+  }
+});
+
+app.post("/login", (req, res) => {
+  const isValidUser = validateUser(req.body);
+
+  if(isValidUser){
+    const userDetail = users.map((user) => {
+      let {password, ...details} = user;
+      return details;
+    })[0]
+    userDetail['authToken'] = "secretkey"
+    res.status(200).send(userDetail);
+  }
+  else res.status(401).send("Unauthorized user")
+})
+
+app.get("/data", (req, res) => {
+    const username = req.headers.username, password = req.headers.password;
+
+    if(validateUser({"username" : username, "password": password})){
+
+      const userDetails = users.map((user) => {
+        let {email, password, ...details} = user;
+        return details;
+      })
+      
+      const response = {
+        "users" : userDetails
+      }
+
+      res.status(200).send(response)
+    }
+    else res.status(401).send("Unauthorized")
+})
+
+/* 
+const user1 = new User({
+  "username": "Mikipaul",
+  "password": "12345",
+  "firstName": "user",
+  "lastName": "name"
+});
+
+const user2 = new User({
+  "username": "Mikipa",
+  "password": "1235",
+  "firstName": "user",
+  "lastName": "name"
+});
+
+users.push(user1, user2); */
+
+
+/* app.listen(3000, (err) => {
+  if(err) throw err
+  console.log("Successfully connected to the PORT")
+})
+ */
 module.exports = app;
